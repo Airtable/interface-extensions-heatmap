@@ -4,6 +4,7 @@ import {
     initializeBlock,
     useCustomProperties,
     useBase,
+    useColorScheme,
     useRecords,
 } from '@airtable/blocks/interface/ui';
 import './style.css';
@@ -12,6 +13,7 @@ function Heatmap() {
     const base = useBase();
     const table = base.tables[0]; // Every base has at least one table
     const records = useRecords(table);
+    const {colorScheme} = useColorScheme();
 
     const {customPropertyValueByKey} = useCustomProperties(
         // This should be a function with a stable identity, i.e. defined outside of the
@@ -57,14 +59,15 @@ function Heatmap() {
 
     // Define a function to calculate color based on population change
     const getColor = value => {
+        const isDarkMode = colorScheme === 'dark';
+        const alpha = 0.2 + 0.8 * (Math.abs(value) / maxValue);
+
         if (value === 0) {
-            return '#eeeeee';
+            return 'rgba(128, 128, 128, 0.2)';
         } else if (value > 0) {
-            const alpha = Math.abs(value) / maxValue;
-            return `rgba(0, 128, 0, ${alpha})`;
+            return isDarkMode ? `rgba(135, 206, 250, ${alpha})` : `rgba(44, 123, 182, ${alpha})`;
         } else {
-            const alpha = Math.abs(value) / maxValue;
-            return `rgba(128, 0, 0, ${alpha})`;
+            return isDarkMode ? `rgba(255, 99, 71, ${alpha})` : `rgba(215, 48, 39, ${alpha})`;
         }
     };
 
@@ -107,7 +110,7 @@ function Heatmap() {
                             const record = _records.find(
                                 record => record.getCellValueAsString(xAxisField) === xAxisValue,
                             );
-                            const value = record ? record.getCellValue(valueField) : 0;
+                            const value = (record && record.getCellValue(valueField)) ?? 0;
                             const cellColor = getColor(value);
                             return (
                                 <td
@@ -116,6 +119,10 @@ function Heatmap() {
                                         backgroundColor: cellColor,
                                         minWidth: 1,
                                         minHeight: 1,
+                                        cursor:
+                                            record && table.hasPermissionToExpandRecords()
+                                                ? 'pointer'
+                                                : 'default',
                                     }}
                                     title={value.toLocaleString()}
                                     onClick={record ? () => expandRecord(record) : undefined}
